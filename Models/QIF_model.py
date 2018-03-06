@@ -6,7 +6,7 @@ Created on Thu Mar  1 11:05:38 2018
 
 This script runs experiments on the QIF model
 and generates a CSV file that contains MSE for all 
-datasets. The trained results and initial statess
+datasets. The trained results and initial states
 are also saved in an npz file [W, initW]
 
 The difference between QIF and Tensor QIF is that in
@@ -19,7 +19,7 @@ import csv
 import QIF
 import Utils
 
-def minimize_QIF(X, y, M, L, tol, max_step, init_method, trained_record=None):
+def minimize_QIF(X, y, M, L, tol, max_step, init_method=None, trained_record=None):
     '''
     @param X: numpy array [batch, T, d1, d2]
     @param y: numpy array [batch, T_y]
@@ -30,7 +30,7 @@ def minimize_QIF(X, y, M, L, tol, max_step, init_method, trained_record=None):
     @param tol: termination condition
     @param max_step: the maximum number of iterations
     @param init_method: ways to initialize tensor coefficients;
-                        option -- 'zeros' or 'random'
+                        option -- 'zeros' 
     @param trained_record: npz file contains [W, funvalue, initW]
     @return: [W, W_init], funvalue
              W are of dim [d1, d2]
@@ -49,19 +49,22 @@ def minimize_QIF(X, y, M, L, tol, max_step, init_method, trained_record=None):
     _, _, d1, d2 = X.shape
     
     
-    if trained_record:
+    if trained_record and os.path.exists(trained_record):
+        print("Load Trained File")
         npzfile = np.load(trained_record)
         W = np.expand_dims(npzfile['W'], axis=0)
         W_init = npzfile['initW']
+        
+    elif init_method == 'zeros':
+        print("Use Zeros as Initial Values")
+        for _ in range(3):
+            W = np.zeros([1,d1,d2])
+            W_init = W[0,:,:].copy() # same as np.squeeze(W)
     else:
-        if init_method == 'zeros':
-            for _ in range(3):
-                W = np.zeros([1,d1,d2])
-                W_init = W[0,:,:].copy() # same as np.squeeze(W)
-        elif init_method == 'random':
-            for _ in range(3):
-                W = np.random.normal(size=(1,d1,d2), loc=0.0, scale=0.1)
-                W_init = W[0,:,:].copy()
+        print("Random Initial Values")
+        for _ in range(3):
+            W = np.random.normal(size=(1,d1,d2), loc=0.0, scale=0.1)
+            W_init = W[0,:,:].copy()
     
     fun_value = []       
     val, grad = QIF.tensorQIF_Gaussian(X, y, M, W)
@@ -94,25 +97,25 @@ def minimize_QIF(X, y, M, L, tol, max_step, init_method, trained_record=None):
 '''
 Training Script
 '''
-data_dir = '../SynData/500_5x5x5'
-report_file = '../SynData/result/500_5x5x5/QIF_500_5x5x5.csv'
-train_size = 400 # actual training size = train_size*(T-tau) 
+data_struct = '2000_5x5x5'
+data_dir = '../SynData/' + str(data_struct)
+report_file = '../SynData/result/'+data_struct+'/QIF_'+data_struct+'.csv'
+train_size = 1500 # actual training size = train_size*(T-tau)
 dataset_num = 100
 
 with open(report_file, 'w') as csvfile:
-    fieldnames = ['QIF Training MSE','QIF Test MSE']
+    fieldnames = ['Data #', 'QIF Training MSE','QIF Test MSE']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     
-    for data_id in range(dataset_num):
+    for data_id in range(91, dataset_num):
         print("Data #" + str(data_id))
-        outfile_dir = '../SynData/result/500_5x5x5/500_5x5x5_' + str(data_id)
-        trained_result =  outfile_dir + '/QIF_trainedW'
+        data = data_dir + '/'+data_struct+'_' + str(data_id) + '.npz'
+        outfile_dir = '../SynData/result/'+data_struct+'/'+data_struct+'_' + str(data_id)
+        trained_result =  outfile_dir + '/QIF_trainedW.npz'
         
         if not os.path.exists(outfile_dir):
             os.makedirs(outfile_dir)
-        
-        data = data_dir + '/500_5x5x5_' + str(data_id) + '.npz'
         
         npzfile = np.load(data)
         X_train = npzfile['X'][:train_size, :,:,:]
@@ -138,5 +141,6 @@ with open(report_file, 'w') as csvfile:
         test_MSE = np.mean(np.square(y_test - y_pred_test))
         
         # write in CSV file
-        writer.writerow({'QIF Training MSE': train_MSE,
+        writer.writerow({'Data #': data_id,
+                         'QIF Training MSE': train_MSE,
                          'QIF Test MSE': test_MSE})

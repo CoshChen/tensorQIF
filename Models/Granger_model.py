@@ -13,13 +13,14 @@ an npz file [W]
 
 from sklearn import linear_model, metrics
 import numpy as np
+import os
 import csv
 import Utils
 
-data_dir = '../SynData/500_5x5x5'
-outfile_dir = '../SynData/result/500_5x5x5'
-report_file = outfile_dir + '/Granger_LASSO_500_5x5x5.csv'
-train_size = 400 # actual training size = train_size*(T-tau) 
+data_struct = '2000_5x5x5'
+data_dir = '../SynData/' + str(data_struct)
+report_file = '../SynData/result/'+data_struct+'/Granger_LASSO_'+data_struct+'.csv'
+train_size = 1500 # actual training size = train_size*(T-tau)
 dataset_num = 100
 
 with open(report_file, 'w') as csvfile:
@@ -28,9 +29,13 @@ with open(report_file, 'w') as csvfile:
     writer.writeheader()
     
     for data_id in range(dataset_num):
-        data = data_dir + '/500_5x5x5_' + str(data_id) + '.npz'
-        trained_result = outfile_dir + '/500_5x5x5_' + str(data_id) + '/Granger_trainedW.npz'
-        trained_result_LASSO = outfile_dir + '/500_5x5x5_' + str(data_id) + '/LASSO_Granger_trainedW.npz'
+        data = data_dir + '/'+data_struct+'_' + str(data_id) + '.npz'
+        outfile_dir = '../SynData/result/'+data_struct+'/'+data_struct+'_' + str(data_id)
+        trained_result = outfile_dir + '/Granger_trainedW.npz'
+        trained_result_LASSO = outfile_dir + '/LASSO_Granger_trainedW.npz'
+        
+        if not os.path.exists(outfile_dir):
+            os.makedirs(outfile_dir)
         
         npzfile = np.load(data)
         X = npzfile['X']

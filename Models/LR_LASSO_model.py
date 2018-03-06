@@ -13,18 +13,18 @@ from sklearn import linear_model, metrics
 import numpy as np
 import csv
 
-data_dir = '../SynData/500_5x5x5'
-report_file = '../SynData/result/500_5x5x5/LR_LASSO_500_5x5x5.csv'
-train_size = 400 # actual training size = train_size*(T-tau) 
+data_dir = '../SynData/2000_5x5x5'
+report_file = '../SynData/result/2000_5x5x5/LR_LASSO_2000_5x5x5.csv'
+train_size = 1500 # actual training size = train_size*(T-tau) 
 dataset_num = 100
 
 with open(report_file, 'w') as csvfile:
-    fieldnames = ['LR Training MSE','LR Test MSE', 'LASSO Training MSE', 'LASSO Test MSE']
+    fieldnames = ['Data #', 'LR Training MSE','LR Test MSE', 'LASSO Training MSE', 'LASSO Test MSE']
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     
     for data_id in range(dataset_num):
-        data = data_dir + '/500_5x5x5_' + str(data_id) + '.npz'
+        data = data_dir + '/2000_5x5x5_' + str(data_id) + '.npz'
         
         npzfile = np.load(data)
         X = npzfile['X']
@@ -62,7 +62,8 @@ with open(report_file, 'w') as csvfile:
         lasso_test_MSE = metrics.mean_squared_error(y_test, lasso_y_pred_test)
         
         # write in CSV file
-        writer.writerow({'LR Training MSE': lr_train_MSE,
+        writer.writerow({'Data #': data_id,
+                         'LR Training MSE': lr_train_MSE,
                          'LR Test MSE': lr_test_MSE, 
                          'LASSO Training MSE': lasso_train_MSE,
                          'LASSO Test MSE': lasso_test_MSE})
