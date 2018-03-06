@@ -145,7 +145,6 @@ Training Script (Single)
 '''
 data_struct = '500_5x5x5'
 data_dir = '../SynData/' + data_struct
-report_file = '../SynData/result/'+data_struct+'/QIF_'+data_struct+'.csv'
 train_size = 400 # actual training size = train_size*(T-tau)
 #dataset_num = 100
 
