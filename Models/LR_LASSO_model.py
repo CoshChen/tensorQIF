@@ -13,8 +13,9 @@ from sklearn import linear_model, metrics
 import numpy as np
 import csv
 
-data_dir = '../SynData/2000_5x5x5'
-report_file = '../SynData/result/2000_5x5x5/LR_LASSO_2000_5x5x5.csv'
+data_struct = '2000_5x5x5'
+data_dir = '../SynData/'+data_struct
+report_file = '../SynData/result/'+data_struct+'/LR_LASSO_'+data_struct+'.csv'
 train_size = 1500 # actual training size = train_size*(T-tau) 
 dataset_num = 100
 
@@ -24,7 +25,7 @@ with open(report_file, 'w') as csvfile:
     writer.writeheader()
     
     for data_id in range(dataset_num):
-        data = data_dir + '/2000_5x5x5_' + str(data_id) + '.npz'
+        data = data_dir +'/'+data_struct+'_' + str(data_id) + '.npz'
         
         npzfile = np.load(data)
         X = npzfile['X']

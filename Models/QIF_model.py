@@ -98,7 +98,7 @@ def minimize_QIF(X, y, M, L, tol, max_step, init_method=None, trained_record=Non
 Training Script
 '''
 data_struct = '2000_5x5x5'
-data_dir = '../SynData/' + str(data_struct)
+data_dir = '../SynData/' + data_struct
 report_file = '../SynData/result/'+data_struct+'/QIF_'+data_struct+'.csv'
 train_size = 1500 # actual training size = train_size*(T-tau)
 dataset_num = 100
