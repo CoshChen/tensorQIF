@@ -9,15 +9,15 @@ import numpy as np
 
 def get_M_list(T):
     M = []
-    M.append(np.eye(T)) # id
-    M.append(np.ones([T,T]) - np.eye(T)) # all off-diagonal 1
-    M.append(np.eye(T, k=1) + np.eye(T, k=-1)) # one upper/lower diagonal 1
+    M.append(np.eye(T)) # M0 = id
+    M.append(np.eye(T, k=1) + np.eye(T, k=-1)) # M1 = one upper/lower diagonal 1
     
-    M4 = np.zeros([T,T])
-    M4[0,0] = 1.0
-    M4[T-1,T-1] = 1.0
+    M2 = np.zeros([T,T])
+    M2[0,0] = 1.0
+    M2[T-1,T-1] = 1.0
+    M.append(M2)
     
-    M.append(M4)
+    M.append(np.ones([T,T]) - np.eye(T)) # M3 = all off-diagonal 1
     
     return M
 
