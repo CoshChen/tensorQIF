@@ -18,10 +18,14 @@ y: labels [m, T-tau]
 W1: tensor coefficient [tau+1, d1, d2]
 W2: tensor coefficient [tau+1, d1, d2]
 W3: tensor coefficient [tau+1, d1, d2]
+
+This scripts generates both .npz (for Python) and .mat (for MATLAB) 
+data files. 
 """
 
 import os
 import numpy as np
+import scipy.io
 import math
 import Utils
 
@@ -34,7 +38,7 @@ m = 500 # sample size
 T = 20 # number of time points
 tau = 4
 d1 = 5
-d2 = 5
+d2 = 7
 
 # Tensor Coefficients
 W_list = []
@@ -44,9 +48,9 @@ for _ in range(3):
     W_list.append(np.zeros([tau+1, d1, d2]))
 
 # None zero indicies
-patterns.append([0,2,4]) # time; numbers in range(tau)
-patterns.append([0,2]) # d1; numbers in range(d1)
-patterns.append([1,2]) #d2; numbers in range(d2)
+patterns.append([0]) # time; numbers in range(tau)
+patterns.append([1]) # d1; numbers in range(d1)
+patterns.append([0,2]) #d2; numbers in range(d2)
 
 
 def get_X(m, T, d1, d2, mu, sigma):
@@ -73,6 +77,7 @@ def get_y(X, W, T, tau, alpha):
     for diff in range(1, T-tau):
         cov += (math.pow(alpha,diff)*np.eye(T-tau, k=diff))
         cov += (math.pow(alpha,diff)*np.eye(T-tau, k=-diff))
+    # cov = AR(alpha)
     
     s = np.random.multivariate_normal(mean, cov, size = (m)) # [m, T-tau]
     
@@ -90,13 +95,18 @@ Generate Datasets
 
 data_struct = str(m) +'_'+ str(tau+1)+'x'+str(d1)+'x'+str(d2)
 data_dir = './SynData/' + data_struct
+mat_dir = data_dir + '/matFiles'
 
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
+    
+if not os.path.exists(mat_dir):
+    os.makedirs(mat_dir)
 
 for i in range(dataset_num):
     data_id = i
     outfile = data_dir + '/' + data_struct + '_'+ str(data_id) + '.npz'
+    mat_file = mat_dir+'/'+data_struct+'_'+str(data_id) + '.mat'
     
     W_list[0][patterns[0], :, :] = np.random.uniform(low=-9.0, high=9.0, size=(len(patterns[0]), d1, d2))
     W_list[1][:, patterns[1], :] = np.random.uniform(low=-9.0, high=9.0, size=(tau+1, len(patterns[1]), d2))
@@ -107,3 +117,5 @@ for i in range(dataset_num):
     y = get_y(X, W, T, tau, 0.6) # [m, T-tau]
     
     np.savez(outfile, X=X, y=y, W1=W_list[0], W2=W_list[1], W3=W_list[2])
+    scipy.io.savemat(mat_file, dict(X=X, y=y, W1=W_list[0], W2=W_list[1], W3=W_list[2]))
+    
