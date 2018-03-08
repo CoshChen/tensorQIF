@@ -19,7 +19,7 @@ W1: tensor coefficient [tau+1, d1, d2]
 W2: tensor coefficient [tau+1, d1, d2]
 W3: tensor coefficient [tau+1, d1, d2]
 
-This scripts generates both .npz (for Python) and .mat (for MATLAB) 
+This script generates both .npz (for Python) and .mat (for MATLAB) 
 data files. 
 """
 
