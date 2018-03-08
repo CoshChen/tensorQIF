@@ -13,17 +13,17 @@ import QIF_Tensorflow as qif
 
 retrain = True
 
-epoch = 10**7
+epoch = 10**5
 report = 10**3
 tol = 10**-12
-tol_2 = 10**-3
+tol_2 = 10**-6
 train_size = 400
 
 lam_list = [0.3, 0.3, 0.3] # Model Parameter
 
-data_struct = '500_5x5x5'
+data_struct = '500_5x5x7'
 data_dir = '../SynData/' + str(data_struct)
-M_list_len = 3
+M_list_ind = [0,1]
 
 
 data_id = 0
@@ -83,7 +83,7 @@ if retrain or not os.path.exists(check_point_file_to_load + '.meta'):
     labels = tf.placeholder(dtype='float64', shape = [None, T-tau], name='labels')
     
     M = []
-    for i in range(M_list_len):
+    for i in M_list_ind:
         M.append(tf.constant(M_list[i]))
     
     W_list_1 = []
@@ -217,6 +217,8 @@ for i in range(epoch):
         print(" ")
         
         if diff < tol or diff_2 < tol_2:
+            print("Small Function Value Change: " + str(diff<tol))
+            print("Small MSE Change: " + str(diff_2<tol_2))
             print("Early Stop")
             break
         
