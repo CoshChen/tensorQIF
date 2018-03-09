@@ -8,4 +8,4 @@ The source code in Python for the paper "Latent Sparse Modeling of Longitudinal 
 <img src="https://github.com/CoshChen/tensorQIF/blob/master/Plot/Model.png" width="40%" height="40%">
 
 # Example Result: W = W1 + W2 + W3
-<img src="https://github.com/CoshChen/tensorQIF/blob/master/Plot/500_5x5x5_15.png" width="40%" height="40%">
+<img src="https://github.com/CoshChen/tensorQIF/blob/master/Plot/500_5x5x5_0.png" width="40%" height="40%"> &nbsp; &nbsp; <img src="https://github.com/CoshChen/tensorQIF/blob/master/Plot/500_5x5x5_15.png" width="40%" height="40%">
