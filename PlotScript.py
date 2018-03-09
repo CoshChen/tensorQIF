@@ -3,22 +3,33 @@
 Created on Mon Feb 19 11:55:40 2018
 
 @author: Ko-Shin Chen
+
+This script shows
+1. Plot of trained coefficient W (trained_W)
+2. Plot of abs(true_W - trained_W)
+3. MSE of among all entries of trained_W
+4. The maximum and the minimum value in 
+   abs(true_W - trained_W)
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-model = 'data'
+
+######## Input Variables ########
+model = 'Granger' # Use 'data' to plot true Ws
 data_struct = '500_5x5x5'
 data_id = 0
 
-trained_result = './SynData/result/'+data_struct+'/'+data_struct+'_'+str(data_id)+'/'+model+'_trainedW.npz' # training result
-syn_data = './SynData/'+data_struct+'/'+data_struct+'_'+str(data_id)+'.npz' # input dataset 
-
+########## Plot Setting #########
 cutoff = -1
-# for plot color
 vmax = 9
 vmin = -9
+#################################
+
+
+trained_result = './SynData/result/'+data_struct+'/'+data_struct+'_'+str(data_id)+'/'+model+'_trainedW.npz' # training result
+syn_data = './SynData/'+data_struct+'/'+data_struct+'_'+str(data_id)+'.npz' # input dataset 
 
 
 single_W = True
@@ -51,8 +62,7 @@ if single_W:
     plt.imshow(W_unfold, cmap='bwr', interpolation='nearest', vmin=vmin, vmax=vmax)
     plt.title("W")
     plt.show()
-    
-    
+       
 else:
     W_1_unfold = unfold_0(npzfile['W1'])
     W_2_unfold = unfold_0(npzfile['W2'])
