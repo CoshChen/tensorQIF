@@ -8,7 +8,7 @@ Created on Wed Feb 21 10:15:26 2018
 import tensorflow as tf
 import math
 
-def QIF_Gaussian_tf(X_repeat, y, tau, M, W):
+def QIF_Gaussian_tf(X_repeat, y, M, W):
     '''
     Eq(4): mu = eta = <X, W>
     Eq(6): A = I
@@ -21,7 +21,7 @@ def QIF_Gaussian_tf(X_repeat, y, tau, M, W):
     @param W: [tau+1, d1, d2]; 
     '''
     batch = tf.shape(X_repeat)[0]
-    dims = X_repeat.get_shape()
+    dims = X_repeat.get_shape() # [batch, T-tau, (tau+1)*d1*d2]
     
     W_vect = tf.reshape(W, [int(dims[2]), 1]) # [(tau+1)*d1*d2, 1]
     X_flat = tf.reshape(X_repeat, [batch*int(dims[1]), int(dims[2])]) # [batch*(T-tau), (tau+1)*d1*d2]
