@@ -15,7 +15,6 @@ def QIF_Gaussian_tf(X_repeat, y, M, W):
     
     @param X_repeat: placeholder [batch, T-tau, (tau+1)*d1*d2]
     @param y: placeholder [batch, T-tau]
-    @param tau: parameter in range(T)
     @param M: placeholder list [M1, M2, ..., Md], 
               Mi are of dim [T-tau, T-tau]; ref: Eq (8)
     @param W: [tau+1, d1, d2]; 
