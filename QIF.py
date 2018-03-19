@@ -25,7 +25,6 @@ def tensorQIF_Gaussian(X, y, M, W):
     
     @param X: numpy array [batch, T, d1, d2]
     @param y: numpy array [batch, T-tau]
-    @param tau: parameter in range(T)
     @param M: parameter numpy array list [M1, M2, ..., Md], 
               Mi are numpy arrays [T-tau, T-tau]; ref: Eq (8)
     @param W: numpy [tau+1, d1, d2]; 
