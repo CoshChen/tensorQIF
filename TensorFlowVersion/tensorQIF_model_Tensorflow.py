@@ -136,7 +136,7 @@ for data_id in range(dataset_num):
         reg = tf.add(
             tf.add(qif.tensor_L12(lam_list[0], W_list_1, 'W_1_norm'), qif.tensor_L12(lam_list[1], W_list_2, 'W_2_norm')),
             qif.tensor_L12(lam_list[2], W_list_3, 'W_3_norm'), name='reg')
-        QIF = qif.QIF_Gaussian_tf(X_repeat, labels, tau, M, W)
+        QIF = qif.QIF_Gaussian_tf(X_repeat, labels, M, W)
         loss = tf.add(QIF, reg, name='loss')
 
         s = tf.get_default_graph().get_tensor_by_name('s:0')  # y-mu [batch, T-tau]
