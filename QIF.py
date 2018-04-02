@@ -15,10 +15,11 @@ i.e. the current y_t depends only on current X_t
 """
 
 import numpy as np
+import Norms
 import Utils
 
 
-def tensorQIF_Gaussian(X, y, M, W):
+def tensorQIF_Gaussian(X, y, M, W, corr_restruct=False, alpha=10**-3, calculate_L=False):
     '''
     Eq(4): mu = eta = <X, W>
     Eq(6): A = I
@@ -27,7 +28,9 @@ def tensorQIF_Gaussian(X, y, M, W):
     @param y: numpy array [batch, T-tau]
     @param M: parameter numpy array list [M1, M2, ..., Md], 
               Mi are numpy arrays [T-tau, T-tau]; ref: Eq (8)
-    @param W: numpy [tau+1, d1, d2]; 
+    @param W: numpy [tau+1, d1, d2];
+    @param corr_restruct: set to True if use (1-alpha)Sample_corr + alpha*I
+    @param calculate_L: True to estimate L_max 
     '''
     
     batch, T, d1, d2 = X.shape # N = (tau+1)*d1*d2
@@ -69,39 +72,45 @@ def tensorQIF_Gaussian(X, y, M, W):
     g_m = np.mean(g_i, axis=0) # [d*(tau+1)*d1*d2, 1]
     g_m_tr = np.transpose(g_m)
     
-    C_m = np.mean(np.matmul(g_i, np.transpose(g_i, [0,2,1])), axis=0)
-    
-    # cond = np.linalg.cond(C_m)
-    # print("Current C_m's condition number = " + str(cond))
-    
-    C_m_inv = np.linalg.inv(C_m)
-    # C_m_inv = np.linalg.pinv(C_m)
-    
     dg_m = -np.mean(dg_i, axis=0) # [d*(tau+1)*d1*d2, (tau+1)*d1*d2]
     dg_m_tr = np.transpose(dg_m)
     
-    # function value
-    C_inv_g = np.matmul(C_m_inv, g_m)
-    fun_value = batch * np.matmul(g_m_tr, C_inv_g)
+    L_max = 0.0
     
-    # function gradient
-    '''
-    J = np.matmul(dg_m_tr, np.matmul(C_m_inv, dg_m))
-    J_inv = np.linalg.pinv(J)
-    dQ_apx = 2.0*np.matmul(dg_m_tr, np.matmul(C_m_inv, g_m))
-    fun_grad = np.matmul(J_inv, dQ_apx) # IRGLS direction
-    '''
+    if corr_restruct and alpha >= 1.0:
+        fun_value = batch * np.matmul(g_m_tr, g_m)
+        dQ = 2.0*np.matmul(dg_m_tr, g_m)
+        
+    else:
+        C_m = np.mean(np.matmul(g_i, np.transpose(g_i, [0,2,1])), axis=0) # [d*(tau+1)*d1*d2, d*(tau+1)*d1*d2]
+        
+        if not corr_restruct:
+            C_m_inv = np.linalg.inv(C_m)
+        else:
+            C_m_inv = np.linalg.inv(((1-alpha)*C_m) + (alpha*np.eye(d*(tau+1)*d1*d2)))
     
-    dQ = 2.0*np.matmul(dg_m_tr, C_inv_g) # [(tau+1)*d1*d2, 1]
-    g_tr_C_inv = np.matmul(g_m_tr, C_m_inv)
-    
-    for j in range((tau+1)*d1*d2):
-        dC_i_part = np.matmul(np.expand_dims(dg_i[:,:,j], axis=2), np.transpose(g_i, [0,2,1])) # [batch, d*(tau+1)*d1*d2, d*(tau+1)*d1*d2]
-        dC_m_part = np.mean(dC_i_part, axis=0)
-        dC_entry = dC_m_part + np.transpose(dC_m_part) # the j-th entry of dC_m [d*(tau+1)*d1*d2, d*(tau+1)*d1*d2]
-        dQ[j,0] = dQ[j,0] - np.matmul(np.matmul(g_tr_C_inv, dC_entry), C_inv_g)[0,0]
-    
-    fun_grad = dQ
-    
-    return np.squeeze(fun_value), np.reshape(fun_grad, [(tau+1),d1,d2])
+        # function value
+        C_inv_g = np.matmul(C_m_inv, g_m)
+        fun_value = batch * np.matmul(g_m_tr, C_inv_g)
+        
+        # function gradient
+        dQ = 2.0*np.matmul(dg_m_tr, C_inv_g) # [(tau+1)*d1*d2, 1]
+        g_tr_C_inv = np.matmul(g_m_tr, C_m_inv)
+        
+        for j in range((tau+1)*d1*d2):
+            dC_i_part = np.matmul(np.expand_dims(dg_i[:,:,j], axis=2), np.transpose(g_i, [0,2,1])) # [batch, d*(tau+1)*d1*d2, d*(tau+1)*d1*d2]
+            dC_m_part = np.mean(dC_i_part, axis=0)
+            dC_entry = dC_m_part + np.transpose(dC_m_part) # the j-th entry of dC_m [d*(tau+1)*d1*d2, d*(tau+1)*d1*d2]
+            second_term = np.matmul(np.matmul(g_tr_C_inv, dC_entry), C_inv_g)[0,0]
+            
+            if corr_restruct:
+                second_term *= (1-alpha)
+            
+            dQ[j,0] = dQ[j,0] - second_term
+        
+    # Calculate L_max
+    if calculate_L:
+       L_max = 2*Norms.L1(dg_m)*Norms.L_inf(dg_m)
+
+    return np.squeeze(fun_value), np.reshape(batch*dQ, [(tau+1),d1,d2]), L_max
 

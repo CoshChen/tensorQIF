@@ -28,12 +28,17 @@ def _LF1(k, tensor):
     else:
         for i in range(dim):
             norm += L2(tensor[:,:,i])
-    return norm
-    
-    
+    return norm    
+
 
 def L2(array):
     return np.sqrt(np.sum(np.square(array)))
 
 def L2_squared(array):
     return np.sum(np.square(array))
+
+def L1(matrix):
+    return max(np.sum(np.abs(matrix),axis=0))
+
+def L_inf(matrix):
+    return max(np.sum(np.abs(matrix),axis=1))
