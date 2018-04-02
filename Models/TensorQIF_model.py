@@ -15,7 +15,12 @@ import Norms
 import Utils
 
 
-def minimize_tensorQIF(X, y, tau, M, lam_list, L, tol, max_step, init_method, trained_record=None):
+def minimize_tensorQIF(X, y, tau, M, lam_list,
+                       line_search,
+                       tol, max_step, 
+                       init_method,
+                       corr_restruct=False, alpha=10**-3,
+                       trained_record=None):
     '''
     @param X: numpy array [batch, T, d1, d2]
     @param y: numpy array [batch, T_y]
@@ -23,11 +28,13 @@ def minimize_tensorQIF(X, y, tau, M, lam_list, L, tol, max_step, init_method, tr
     @param M: parameter numpy array list [M1, M2, ..., Md], 
               Mi are numpy arrays [T-tau, T-tau]; ref: Eq (8)
     @param lam_list: [lambda_1, lambda_2, lambda_3]
-    @param L: one over the GD step size
+    @param line_search: True for using line search
     @param tol: termination condition
     @param max_step: the maximum number of iterations
     @param init_method: ways to initialize tensor coefficients;
                         option -- 'zeros' or 'path to assigned init file'
+    @param corr_restruct: set to True if use C_m = (1-alpha)Sample_Corr + alpha*I
+    @alpha: C_m = I if alpha >= 1.0
     @return: [W1, W2, W3, W1_init, W2_init, W3_init], funvalue
              Wi are of dim [(tau+1), d1, d2]
              funvalue is a list of function values at each GD step
@@ -84,33 +91,59 @@ def minimize_tensorQIF(X, y, tau, M, lam_list, L, tol, max_step, init_method, tr
     fun_value = []
     
     W = W_list[0] + W_list[1] + W_list[2]
-    val, grad = QIF.tensorQIF_Gaussian(X, y, M, W)
-    val += Norms.latent_LF1(lam_list, W_list)
-    fun_value.append(val)
     
-    print("Initial loss = " + str(val))
+    if line_search:
+        L = 1.0
+        val, grad, _ = QIF.tensorQIF_Gaussian(X, y, M, W, corr_restruct, alpha)
+    else:
+        val, grad, L = QIF.tensorQIF_Gaussian(X, y, M, W, corr_restruct, alpha, True) # Calculate L_max
+        print("L = " + str(L))
+        
+    fun_value.append(val + Norms.latent_LF1(lam_list, W_list))
+    
+    print("Initial loss = " + str(fun_value[-1]))
     print(" ")
     
     for i in range(max_step):
-        W_new_list = []
-        for k in range(3):
-            W_new_list.append(_update_W(k, W_list[k], grad, lam_list[k], L, tau, d1, d2))
+        if line_search:
+            # ref: http://www.seas.ucla.edu/~vandenbe/236C/lectures/proxgrad.pdf page:6-20
+            max_iter = 10**4
+            for line_iter in range(max_iter):
+                W_new_list = []
+                for k in range(3):
+                    W_new_list.append(_update_W(k, W_list[k], grad, lam_list[k], L, tau, d1, d2))
+                
+                W_new = W_new_list[0] + W_new_list[1] + W_new_list[2]
+                new_val, _, _ = QIF.tensorQIF_Gaussian(X, y, M, W_new, corr_restruct, alpha)
+                LH = new_val - val + np.sum(np.multiply(grad, W - W_new))
+                
+                if 2*LH <= L*Norms.L2_squared(W - W_new) or line_iter == max_iter-1:
+                    W_list = W_new_list
+                    W = W_new
+                    val, grad, _ = QIF.tensorQIF_Gaussian(X, y, M, W, corr_restruct, alpha)
+                    break
+                else:
+                    L *= 2.0
+                
+        else:
+            W_new_list = []
+            for k in range(3):
+                W_new_list.append(_update_W(k, W_list[k], grad, lam_list[k], L, tau, d1, d2))
+                
+            W_list = W_new_list
+            W = W_new_list[0] + W_new_list[1] + W_new_list[2]
+            val, grad, _ = QIF.tensorQIF_Gaussian(X, y, M, W, corr_restruct, alpha) 
+                
+        fun_value.append(val + Norms.latent_LF1(lam_list, W_list))
         
-        print("---Step " + str(i) + "---")
-        W_new = W_new_list[0] + W_new_list[1] + W_new_list[2]
-        val, grad = QIF.tensorQIF_Gaussian(X, y, M, W_new)
-        val += Norms.latent_LF1(lam_list, W_new_list)
+        if (i+1)%500 == 0:
+            print("---Step " + str(i) + "---")
+            print("Loss = " + str(fun_value[-1]))
+            print(" ")
         
-        print("Loss = " + str(val))
-        
-        if abs(fun_value[-1] - val) < tol:
-            fun_value.append(val)
+        if abs(fun_value[-1] - fun_value[-2]) < tol:
             print("Early stop at step " + str(i))
-            return W_new_list + W_init, fun_value
-        
-        fun_value.append(val)
-        W_list = W_new_list
-        print(" ")
+            return W_list + W_init, fun_value
         
     print("Done " + str(max_step) + "steps.")
     return W_list + W_init, fun_value
@@ -143,16 +176,19 @@ def _update_W(k, W, grad, lam, L, tau, d1, d2):
 '''
 Training Script (Single)
 '''
-data_struct = '500_5x5x5'
+data_struct = '150_10x10x10_AR08'
 data_dir = '../SynData/' + data_struct
-train_size = 400 # actual training size = train_size*(T-tau)
+train_size = 120
 #dataset_num = 100
 
-lam_list = [0.3,0.3,0.3]
-L = 1.0
+lam_list = [10,10,10]
 tol = 10**-12
-max_step = 400
-M_list_len = 3
+max_step = 10**5
+M_list_len = 2
+
+line_search = False
+corr_restruct = False
+alpha = 10**-3
 
 data_id = 0
 data = data_dir + '/'+data_struct+'_' + str(data_id) + '.npz'
@@ -172,9 +208,11 @@ y_test = npzfile['y'][train_size:, :]
 
 _, T, d1, d2 = X_train.shape
 tau = T - y_train.shape[1]
-
 M_list = Utils.get_M_list(y_train.shape[1])
-W_trained, vals = minimize_tensorQIF(X_train, y_train, tau, M_list[:M_list_len], lam_list, L, tol, max_step, init_method, trained_record=trained_result)
+
+W_trained, vals = minimize_tensorQIF(X_train, y_train, tau, M_list[:M_list_len], lam_list, 
+                                     line_search, tol, max_step, init_method, corr_restruct, alpha,
+                                     trained_record=trained_result)
 np.savez(trained_result, W1=W_trained[0], W2=W_trained[1], W3=W_trained[2], W1_init=W_trained[3], W2_init=W_trained[4], W3_init=W_trained[5])
 
 # Calculate MSE
