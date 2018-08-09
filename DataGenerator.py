@@ -32,29 +32,42 @@ import Utils
 
 
 ############### Input Variables ###############
+new_W = True
+W_data = './SynData/1200_3x3x3_AR18_c4/1200_3x3x3_AR18_c4_0.npz' # path to assigned W
+
 dataset_num = 100 # number of datasets needed
-m = 1000 # sample size
+test_num = 1 # number of testsets
+m = 2000 # sample size
+test_m = 10000
 # Sample size setting ref:
 # https://stats.stackexchange.com/questions/60622/why-is-a-sample-covariance-matrix-singular-when-sample-size-is-less-than-number
 
-T = 20 # number of time points
+T = 11 # number of time points
 tau = 4
-d1 = 5
-d2 = 5
+d1 = 10
+d2 = 10
 
 # None zero indicies (Patterns in Ws)
 pattern_1 = [0] # time; numbers in range(tau)
 pattern_2 = [0] # d1; numbers in range(d1)
 pattern_3 = [0] #d2; numbers in range(d2)
 
+
+cor = 'AR1'
 alpha = 0.8 # Error term
+c = 4 # var scale
 ###############################################
 
 
 def get_X(m, T, d1, d2, mu, sigma):
-    return np.random.normal(mu, sigma, size=(m, T, d1, d2))
+    X = np.random.normal(mu, sigma, size=(m, T, d1, d2))
+    
+    for t in range(T):
+        X[:, t, :, :] += np.random.uniform(low=0.0, high=np.sin(t)**2, size=(m,d1,d2))
+    
+    return X
 
-def get_y(X, W, T, tau, alpha, cov_struct='AR1'):
+def get_y(X, W, T, tau, alpha, c, cov_struct='AR1'):
     '''
     @param X: numpy array [m, T, d1, d2]
     @param W: numpy array [(tau+1), d1, d2]
@@ -81,12 +94,14 @@ def get_y(X, W, T, tau, alpha, cov_struct='AR1'):
     elif cov_struct == 'exchangeable':
         cov += alpha*(np.ones([T-tau, T-tau]) - np.eye(T-tau))
     
-    s = np.random.multivariate_normal(mean, cov, size = (m)) # [m, T-tau]
+    s = np.random.multivariate_normal(mean, c*cov, size = (m)) # [m, T-tau]
     
     for t in range(T-tau):
         y[:,t] = np.squeeze(np.matmul(X_repeat[:, t, :], W_vect))
     
     y += s
+    # y += np.random.normal(loc=0.0, scale=0.05, size=y.shape)
+    
     return y    
 
 
@@ -94,40 +109,62 @@ def get_y(X, W, T, tau, alpha, cov_struct='AR1'):
 '''
 Generate Datasets
 '''
-data_struct = str(m) +'_'+ str(tau+1)+'x'+str(d1)+'x'+str(d2)+'_Exch08'
+data_struct = str(m) +'_'+ str(tau+1)+'x'+str(d1)+'x'+str(d2)+'_'+cor+str(int(alpha*10))+'_c'+str(c)
 data_dir = './SynData/' + data_struct
+test_dir = data_dir + '/testset'
 mat_dir = data_dir + '/matFiles'
 
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
     
+if not os.path.exists(test_dir):
+    os.makedirs(test_dir)
+    
 if not os.path.exists(mat_dir):
     os.makedirs(mat_dir)
 
 # Tensor Coefficients
-W_list = []
-for _ in range(3):
-    W_list.append(np.zeros([tau+1, d1, d2]))
+if (not new_W) and W_data and os.path.exists(W_data):
+    print("Use Assigned Ws.")
+    d0 = np.load(W_data)
+    W_list = [d0['W1'], d0['W2'], d0['W3']]
 
-for i in range(dataset_num):
-    data_id = i
-    outfile = data_dir + '/' + data_struct + '_'+ str(data_id) + '.npz'
-    mat_file = mat_dir+'/'+data_struct+'_'+str(data_id) + '.mat'
-    
-    W_list[0][pattern_1, :, :] = np.random.uniform(low=-9.0, high=9.0, size=(len(pattern_1), d1, d2))
-    W_list[1][:, pattern_2, :] = np.random.uniform(low=-9.0, high=9.0, size=(tau+1, len(pattern_2), d2))
-    W_list[2][:, :, pattern_3] = np.random.uniform(low=-9.0, high=9.0, size=(tau+1, d1, len(pattern_3)))
-    
+else:
+    print("Generate new Ws.")
+    W_list = []
+    for _ in range(3):
+        W_list.append(np.zeros([tau+1, d1, d2]))
+        
+    W_list[0][pattern_1, :, :] = 0.1*np.random.normal(0.0, 1.0, size=(len(pattern_1), d1, d2))
+    W_list[1][:, pattern_2, :] = np.random.normal(0.0, 1.0, size=(tau+1, len(pattern_2), d2))
+    W_list[2][:, :, pattern_3] = 0.01*np.random.normal(0.0, 1.0, size=(tau+1, d1, len(pattern_3)))
+        
     # To generate very sparse coefficients
-    #for _ in range(2):
+    #for _ in range(1):
     #    mask= np.random.randint(2, size=(tau+1, d1, d2))
     #    W_list[0] = np.multiply(W_list[0], mask)
     #    W_list[1] = np.multiply(W_list[1], mask)
     #    W_list[2] = np.multiply(W_list[2], mask)
+
+
+W = W_list[0] + W_list[1] + W_list[2]
+
+for data_id in range(dataset_num):
+    outfile = data_dir + '/' + data_struct + '_'+ str(data_id) + '.npz'
+    mat_file = mat_dir+'/'+data_struct+'_'+str(data_id) + '.mat'
     
-    W = W_list[0] + W_list[1] + W_list[2]
-    X = get_X(m, T, d1, d2, 0.0, 2.0) # [m, T, d1, d2]
-    y = get_y(X, W, T, tau, alpha, 'exchangeable') # [m, T-tau]
+    X = get_X(m, T, d1, d2, 0.0, 1.0) # [m, T, d1, d2]
+    y = get_y(X, W, T, tau, alpha, c, cor) # [m, T-tau]
+    
+    np.savez(outfile, X=X, y=y, W1=W_list[0], W2=W_list[1], W3=W_list[2])
+    scipy.io.savemat(mat_file, dict(X=X, y=y, W1=W_list[0], W2=W_list[1], W3=W_list[2]))
+    
+for test_id in range(test_num):
+    outfile = test_dir + '/test_'+ str(test_id) + '.npz'
+    mat_file = mat_dir+'/'+'test_'+str(test_id) + '.mat'
+    
+    X = get_X(m, T, d1, d2, 0.0, 1.0) # [m, T, d1, d2]
+    y = get_y(X, W, T, tau, alpha, c, cor) # [m, T-tau]
     
     np.savez(outfile, X=X, y=y, W1=W_list[0], W2=W_list[1], W3=W_list[2])
     scipy.io.savemat(mat_file, dict(X=X, y=y, W1=W_list[0], W2=W_list[1], W3=W_list[2]))
